@@ -37,8 +37,9 @@ func main() {
 
 	// get bot token from env variable
 	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
-	if botToken == "" {
-		log.Fatalf("Telegram bot token not found in environment variables")
+	webhookURL := os.Getenv("WEBHOOK_URL") // e.g. "https://yourdomain.com:8080/<TOKEN>"
+	if botToken == "" || webhookURL == "" {
+		log.Fatalf("Telegram bot token or webhook URL not found in environment variables")
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -51,56 +52,82 @@ func main() {
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
+	// Set up webhook instead of polling
+	_, err = bot.SetWebhook(tgbotapi.NewWebhook(webhookURL))
+	if err != nil {
+		log.Fatalf("Error setting webhook: %s", err)
+	}
 
-	updates := bot.GetUpdatesChan(u)
+	info, err := bot.GetWebhookInfo()
+	if err != nil {
+		log.Fatalf("Error getting webhook info: %s", err)
+	}
 
-	for update := range updates {
-		if update.Message != nil {
+	if info.LastErrorDate != 0 {
+		log.Printf("Telegram callback failed: %s", info.LastErrorMessage)
+	}
+
+	// Start the HTTP server to listen for webhook calls
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		update, err := bot.HandleUpdate(r)
+		if err != nil {
+			log.Println("Failed to parse update: ", err)
+			return
+		}
+
+		if update.Message != nil { // Check if message is not nil
 			if update.Message.Document != nil {
-
+				// Handle document file
 				if update.Message.Document.MimeType[:5] == "video" {
 					fileID := update.Message.Document.FileID
 					file, err := bot.GetFileDirectURL(fileID)
 					if err != nil {
 						log.Println("Failed to get file: ", err)
-						continue
+						return
 					}
 
-					// download original file
+					// Download file locally
 					inputFilePath := fmt.Sprintf("input_%d.mp4", update.Message.MessageID)
 					outputFilePath := fmt.Sprintf("output_%d.mp4", update.Message.MessageID)
 
 					err = downloadFile(inputFilePath, file)
 					if err != nil {
 						log.Println("Failed to download video: ", err)
-						continue
+						return
 					}
 
+					// Randomize metadata using ffmpeg
 					err = RandomizeVideoMetadata(inputFilePath, outputFilePath)
 					if err != nil {
 						log.Println("Error randomizing metadata: ", err)
-						continue
+						return
 					}
 
-					// send altered file to user
+					// Send the modified video back to the user
 					mediaFile := tgbotapi.NewDocument(update.Message.Chat.ID, tgbotapi.FilePath(outputFilePath))
 					_, err = bot.Send(mediaFile)
 					if err != nil {
 						log.Println("Error sending modified file: ", err)
 					}
 
-					// clean up after sending
+					// Clean up the files after sending
 					os.Remove(inputFilePath)
 					os.Remove(outputFilePath)
 				} else {
-					// if file not mp4 video
-					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please send a valid video file (.mp4).")
+					// Inform user if the file is not a video
+					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please send a valid video file (mp4, mkv, avi).")
 					bot.Send(msg)
 				}
 			}
 		}
+	})
+
+	// start server on 0.0.0.0:4000
+	port := ":4000"
+	log.Printf("Starting server on port %s", port)
+	err = http.ListenAndServe("0.0.0.0"+port, nil)
+	if err != nil {
+		log.Fatalf("Failed to start server: %s", err)
 	}
 }
 
