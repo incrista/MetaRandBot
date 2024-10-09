@@ -50,6 +50,7 @@ func RandomizeVideoMetadata(inputFilePath, outputFilePath string) error {
 }
 
 func main() {
+
 	/*
 		// load env variables from .env file
 		err := godotenv.Load()
@@ -57,6 +58,20 @@ func main() {
 			log.Fatalf("Error loading .env file")
 		}
 	*/
+
+	// endpoint for health checks
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Working OK :)"))
+	})
+
+	// start server on 0.0.0.0:443
+	port := os.Getenv("PORT")
+	log.Printf("Starting server on port %s", port)
+	err := http.ListenAndServe("0.0.0.0:"+port, nil)
+	if err != nil {
+		log.Fatalf("Failed to start server: %s", err)
+	}
 
 	// get bot token from env variable
 	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
@@ -231,19 +246,6 @@ func main() {
 		}
 	}
 
-	// endpoint for health checks
-	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Working OK :)"))
-	})
-
-	// start server on 0.0.0.0:443
-	port := os.Getenv("PORT")
-	log.Printf("Starting server on port %s", port)
-	err = http.ListenAndServe("0.0.0.0:"+port, nil)
-	if err != nil {
-		log.Fatalf("Failed to start server: %s", err)
-	}
 }
 
 // download and save file locally
