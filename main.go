@@ -10,8 +10,6 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/joho/godotenv"
-
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -29,11 +27,13 @@ func RandomizeVideoMetadata(inputFilePath, outputFilePath string) error {
 }
 
 func main() {
-	// load env variables from .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file")
-	}
+	/*
+		// load env variables from .env file
+		err := godotenv.Load()
+		if err != nil {
+			log.Fatalf("Error loading .env file")
+		}
+	*/
 
 	// get bot token from env variable
 	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
