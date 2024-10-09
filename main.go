@@ -139,9 +139,9 @@ func main() {
 	})
 
 	// start server on 0.0.0.0:80
-	port := ":80"
+	port := os.Getenv("PORT")
 	log.Printf("Starting server on port %s", port)
-	err = http.ListenAndServe("0.0.0.0"+port, nil)
+	err = http.ListenAndServe("0.0.0.0:"+port, nil)
 	if err != nil {
 		log.Fatalf("Failed to start server: %s", err)
 	}
