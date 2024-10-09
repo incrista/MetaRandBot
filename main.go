@@ -13,6 +13,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+/*
 func RandomizeVideoMetadata(inputFilePath, outputFilePath string) error {
 
 	randomTitle := fmt.Sprintf("RandomTitle%d", rand.Intn(100))
@@ -24,6 +25,28 @@ func RandomizeVideoMetadata(inputFilePath, outputFilePath string) error {
 		"-metadata", fmt.Sprintf("date=%s", randomDate), "-codec", "copy", outputFilePath)
 
 	return cmd.Run()
+}
+*/
+
+func RandomizeVideoMetadata(inputFilePath, outputFilePath string) error {
+	// Generate random creation and modification times
+	randomCreationTime := time.Now().AddDate(-rand.Intn(5), -rand.Intn(12), -rand.Intn(28)).Format("2006-01-02T15:04:05")
+	randomModifyTime := time.Now().Add(time.Duration(rand.Intn(86400)) * time.Second).Format("2006-01-02T15:04:05")
+
+	// Prepare the ffmpeg command to modify the media creation and modification times
+	cmd := exec.Command("ffmpeg", "-i", inputFilePath,
+		"-metadata", fmt.Sprintf("creation_time=%s", randomCreationTime),
+		"-metadata", fmt.Sprintf("modification_time=%s", randomModifyTime),
+		"-codec", "copy", outputFilePath)
+
+	// Execute the ffmpeg command
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed to randomize media timestamps: %v", err)
+	}
+
+	log.Printf("Media timestamps randomized successfully: creation_time=%s, modification_time=%s", randomCreationTime, randomModifyTime)
+	return nil
 }
 
 func main() {
