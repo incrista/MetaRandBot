@@ -52,19 +52,25 @@ func main() {
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
-	// Set up webhook instead of polling
-	_, err = bot.SetWebhook(tgbotapi.NewWebhook(webhookURL))
+	// Set webhook using the built-in method from the Telegram Bot API package
+	webhookConfig, err := tgbotapi.NewWebhook(webhookURL)
+	if err != nil {
+		log.Fatalf("Failed to create webhook: %s", err)
+	}
+
+	_, err = bot.Request(webhookConfig)
 	if err != nil {
 		log.Fatalf("Error setting webhook: %s", err)
 	}
 
+	// Get webhook info to confirm it's set up correctly
 	info, err := bot.GetWebhookInfo()
 	if err != nil {
 		log.Fatalf("Error getting webhook info: %s", err)
 	}
 
 	if info.LastErrorDate != 0 {
-		log.Printf("Telegram callback failed: %s", info.LastErrorMessage)
+		log.Printf("Telegram webhook setup error: %s", info.LastErrorMessage)
 	}
 
 	// Start the HTTP server to listen for webhook calls
@@ -72,6 +78,7 @@ func main() {
 		update, err := bot.HandleUpdate(r)
 		if err != nil {
 			log.Println("Failed to parse update: ", err)
+			http.Error(w, "Invalid request", http.StatusBadRequest)
 			return
 		}
 
@@ -86,7 +93,7 @@ func main() {
 						return
 					}
 
-					// Download file locally
+					// download file locally
 					inputFilePath := fmt.Sprintf("input_%d.mp4", update.Message.MessageID)
 					outputFilePath := fmt.Sprintf("output_%d.mp4", update.Message.MessageID)
 
@@ -96,34 +103,43 @@ func main() {
 						return
 					}
 
-					// Randomize metadata using ffmpeg
 					err = RandomizeVideoMetadata(inputFilePath, outputFilePath)
 					if err != nil {
 						log.Println("Error randomizing metadata: ", err)
 						return
 					}
 
-					// Send the modified video back to the user
+					// return altered video
 					mediaFile := tgbotapi.NewDocument(update.Message.Chat.ID, tgbotapi.FilePath(outputFilePath))
 					_, err = bot.Send(mediaFile)
 					if err != nil {
 						log.Println("Error sending modified file: ", err)
 					}
 
-					// Clean up the files after sending
+					// clean up
 					os.Remove(inputFilePath)
 					os.Remove(outputFilePath)
 				} else {
-					// Inform user if the file is not a video
+					// if the file is not a video
 					msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Please send a valid video file (mp4, mkv, avi).")
 					bot.Send(msg)
 				}
 			}
 		}
+
+		// Respond to the request
+		w.WriteHeader(http.StatusOK)
 	})
 
-	// start server on 0.0.0.0:4000
-	port := ":4000"
+	// Add a /healthz endpoint for health checks
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		// Respond with a simple status message and HTTP 200 status
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Working OK :)"))
+	})
+
+	// start server on 0.0.0.0:80
+	port := ":80"
 	log.Printf("Starting server on port %s", port)
 	err = http.ListenAndServe("0.0.0.0"+port, nil)
 	if err != nil {
