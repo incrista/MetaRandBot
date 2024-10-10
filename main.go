@@ -77,7 +77,7 @@ func main() {
 
 					switch update.Message.Command() {
 					case "healthz":
-						msg.Text = "https://yourdomain.com/healthz\nWorking OK :)"
+						msg.Text = "https://metarandbot.onrender.com\nWorking OK :)"
 					default:
 						msg.Text = "I don't know that command"
 					}
