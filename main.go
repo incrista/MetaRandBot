@@ -47,20 +47,7 @@ func RandomizeVideoMetadata(inputFilePath, outputFilePath string) error {
 	return nil
 }
 
-package main
-
-import (
-	"fmt"
-	"log"
-	"net/http"
-	"os"
-	"time"
-	"math/rand"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-)
-
 func main() {
-	// Get bot token from env variable
 	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
 	if botToken == "" {
 		log.Fatalf("Telegram bot token not found in environment variables")
@@ -197,7 +184,6 @@ func main() {
 		log.Fatalf("Failed to start server: %s", err)
 	}
 }
-
 
 // download and save file locally
 func downloadFile(filepath string, url string) error {
